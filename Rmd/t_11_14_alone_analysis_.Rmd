@@ -1,5 +1,5 @@
 ---
-title: "Outcomes with t(11;14) in CAR T"
+title: "Outcomes with t(11;14) in CAR T using t(11;14) alone Yes/No category"
 author: "Christelle Colin-Leitzinger"
 date: "`r Sys.Date()`"
 output:
@@ -84,12 +84,12 @@ cart <- clinical %>%
   # Race and Ethnicity
   rename_at(vars(contains("race")), ~ "race") %>%
   rename_at(vars(contains("ethnicity")), ~ "ethnicity") %>%
-  
+  mutate(race_all = race) %>% 
   mutate(race = case_when(
     race == "White"                                  ~ "White",
     race == "Black"                                  ~ "Black",
     str_detect(race, "Asian")                        ~ "Other",
-    str_detect(race, "indian")                       ~ "Other",
+    str_detect(race, "Indian")                       ~ "Other",
     str_detect(race, "Other")                        ~ "Other",
     str_detect(race, "Multiple")                     ~ "Other",
     TRUE                                             ~ race
@@ -142,29 +142,72 @@ cart <- clinical %>%
     TRUE                                                           ~ NA_character_
   )) %>% 
   mutate(gain_amp1q21_gain_amp_no = case_when(
-    gain_amp1q21_gain_amp_no == "No"                                           ~ "No",
-    !is.na(gain_amp1q21_gain_amp_no)                                           ~ "Yes"
+    gain_amp1q21_gain_amp_no == "No"                               ~ "No",
+    !is.na(gain_amp1q21_gain_amp_no)                               ~ "Yes"
   )) %>% 
   mutate(cytogenetics_incl_1q = case_when(
     cytogenetics == "Yes" | 
-      gain_amp1q21_gain_amp_no == "Yes"                                        ~ "Yes",
+      gain_amp1q21_gain_amp_no == "Yes"                            ~ "Yes",
     deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no == "No" &
       t_4_14_prior_to_car_t_infusion_yes_no == "No" &
       t_14_16_prior_to_car_t_infusion_yes_no == "No" &
-      gain_amp1q21_gain_amp_no == "No"                                         ~ "No",
+      gain_amp1q21_gain_amp_no == "No"                             ~ "No",
     TRUE                                                           ~ NA_character_
   )) %>% 
   mutate(high_risk_cyto_newdef = case_when(
-    deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no == "Yes"   ~ "Yes",
-    (deletion_of_1p32_yes_no == "Yes") + 
-      (gain_amp1q21_gain_amp_no == "Yes") +
-      (t_4_14_prior_to_car_t_infusion_yes_no == "Yes") +
-      (t_14_16_prior_to_car_t_infusion_yes_no == "Yes") >= 2       ~ "Yes",
+  deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no == "Yes"     ~ "Yes",
+  t_4_14_prior_to_car_t_infusion_yes_no == "Yes" & 
+    gain_amp1q21_gain_amp_no == "Yes"                              ~ "Yes",
+  t_14_16_prior_to_car_t_infusion_yes_no == "Yes" & 
+    gain_amp1q21_gain_amp_no == "Yes"                              ~ "Yes",
+  t_4_14_prior_to_car_t_infusion_yes_no == "Yes" & 
+    deletion_of_1p32_yes_no == "Yes"                               ~ "Yes",
+  t_14_16_prior_to_car_t_infusion_yes_no == "Yes" & 
+    deletion_of_1p32_yes_no == "Yes"                               ~ "Yes",
+  gain_amp1q21_gain_amp_no == "Yes" & 
+    deletion_of_1p32_yes_no == "Yes"                               ~ "Yes",
+  is.na(deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no) | 
+  is.na(t_4_14_prior_to_car_t_infusion_yes_no) | 
+    is.na(t_14_16_prior_to_car_t_infusion_yes_no) | 
+    is.na(gain_amp1q21_gain_amp_no) | 
+    is.na(deletion_of_1p32_yes_no)                                 ~ NA_character_, 
+  TRUE                                                             ~ "No"
+  )) %>% 
+  
+  mutate(t_11_14_alone = case_when(
+    t_11_14_prior_to_car_t_infusion_yes_no == "Yes" &
+      if_any(c(deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no,
+             deletion_of_1p32_yes_no, 
+             gain_amp1q21_gain_amp_no, 
+             t_4_14_prior_to_car_t_infusion_yes_no, 
+             t_14_16_prior_to_car_t_infusion_yes_no), ~ .== "Yes") ~ "No",
     if_any(c(deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no,
              deletion_of_1p32_yes_no, 
              gain_amp1q21_gain_amp_no, 
              t_4_14_prior_to_car_t_infusion_yes_no, 
-             t_14_16_prior_to_car_t_infusion_yes_no),~ !is.na(.x))~ "No"
+             t_14_16_prior_to_car_t_infusion_yes_no),~ is.na(.x))~ NA_character_,
+    t_11_14_prior_to_car_t_infusion_yes_no == "Yes" &
+      if_any(c(deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no,
+             deletion_of_1p32_yes_no, 
+             gain_amp1q21_gain_amp_no, 
+             t_4_14_prior_to_car_t_infusion_yes_no, 
+             t_14_16_prior_to_car_t_infusion_yes_no), ~ .== "No")  ~ "Yes",
+    t_11_14_prior_to_car_t_infusion_yes_no == "No"           ~ "No"
+  )) %>% 
+  mutate(t_11_14_and_other = case_when(
+    t_11_14_prior_to_car_t_infusion_yes_no == "Yes" &
+      if_any(c(deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no,
+             deletion_of_1p32_yes_no, 
+             gain_amp1q21_gain_amp_no, 
+             t_4_14_prior_to_car_t_infusion_yes_no, 
+             t_14_16_prior_to_car_t_infusion_yes_no), ~ .== "Yes") ~ "t(11;14) and other risk(s)",
+    if_any(c(deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no,
+             deletion_of_1p32_yes_no, 
+             gain_amp1q21_gain_amp_no, 
+             t_4_14_prior_to_car_t_infusion_yes_no, 
+             t_14_16_prior_to_car_t_infusion_yes_no),~ is.na(.x)) ~ NA_character_,
+    t_11_14_prior_to_car_t_infusion_yes_no == "Yes"          ~ "t(11;14) alone",
+    t_11_14_prior_to_car_t_infusion_yes_no == "No"           ~ "No"
   )) %>% 
 
   # Disease ----
@@ -210,32 +253,34 @@ cart1 <- cart %>%
   )) %>% 
   mutate(bridging_response_cat = case_when(
     bridging_therapy_yes_no == "No"                    ~ "No bridging",
-    str_detect(response_to_bridging_chemotherapy, 
-               "CR|VGPR")                              ~ "CR/VGPR",
+    str_detect(response_to_bridging_chemotherapy,
+               "PR|CR")                                ~ "PR or better",
+    str_detect(response_to_bridging_chemotherapy,
+               "SD|PD")                                ~ "SD/PD",
     TRUE                                               ~ response_to_bridging_chemotherapy
   )) %>% 
-  mutate(bridging_response_v2 = case_when(
-    response_to_bridging_chemotherapy %in% c("CR", "sCR", "PR", "VGPR")    ~ "PR or better",
-    response_to_bridging_chemotherapy %in% c("PD", "SD")                   ~ "SD/PD",
-    #bridging_yn == "No"                                    ~ "No bridging therapy",
-    TRUE                                                   ~  NA_character_  )) %>% 
-  mutate(bridging_response_cat_v2 = case_when(
-    bridging_therapy_yes_no == "Yes" & 
-      is.na(response_to_bridging_chemotherapy)         ~ "Bridging, unknown response",
-    TRUE                                               ~ response_to_bridging_chemotherapy
-    )) %>% 
-  mutate(bridging_response_cat = factor(bridging_response_cat, levels = 
-                                          c("No bridging", "CR/VGPR", 
-                                            "PR", "SD", "PD")),
-         bridging_response_cat_v2 = factor(bridging_response_cat_v2, 
-                                           levels = c("No bridging", "CR/VGPR", 
-                                                      "PR", "SD", "PD", 
-                                                      "Bridging, unknown response"))) %>%
+  # mutate(bridging_response_v2 = case_when(
+  #   response_to_bridging_chemotherapy %in% c("CR", "sCR", "PR", "VGPR")    ~ "PR or better",
+  #   response_to_bridging_chemotherapy %in% c("PD", "SD")                   ~ "SD/PD",
+  #   #bridging_yn == "No"                                    ~ "No bridging therapy",
+  #   TRUE                                                   ~  NA_character_  )) %>% 
+  # mutate(bridging_response_cat_v2 = case_when(
+  #   bridging_therapy_yes_no == "Yes" & 
+  #     is.na(response_to_bridging_chemotherapy)         ~ "Bridging, unknown response",
+  #   TRUE                                               ~ response_to_bridging_chemotherapy
+  #   )) %>% 
+  # mutate(bridging_response_cat = factor(bridging_response_cat, levels = 
+  #                                         c("No bridging", "CR/VGPR", 
+  #                                           "PR", "SD", "PD")),
+  #        bridging_response_cat_v2 = factor(bridging_response_cat_v2, 
+  #                                          levels = c("No bridging", "CR/VGPR", 
+  #                                                     "PR", "SD", "PD", 
+  #                                                     "Bridging, unknown response"))) %>%
   #incorporates cleaned NT variable
-  mutate(bridging_response_v3 = case_when(
-    bridging_therapy_yes_no=="No"                      ~ "No bridging therapy", 
-    TRUE                                               ~ bridging_response_v2
-    )) %>% 
+  # mutate(bridging_response_v3 = case_when(
+  #   bridging_therapy_yes_no=="No"                      ~ "No bridging therapy", 
+  #   TRUE                                               ~ bridging_response_v2
+  #   )) %>% 
   
   # Refractory status ----
   mutate(immuno = case_when(
@@ -314,12 +359,12 @@ cart2 <- cart1 %>%
          max_icans == 0                      ~ "No ICANS",
          max_icans == 1                      ~ "Grade 1",
          max_icans >= 2                      ~ "Grade 2+"),
-       icans_gradecat2 = factor(icans_gradecat2, levels = c("No CRS", "Grade 1", "Grade 2+")),
+       icans_gradecat2 = factor(icans_gradecat2, levels = c("No ICANS", "Grade 1", "Grade 2+")),
        icans_gradecat3 = case_when(
          max_icans == 0                      ~ "No ICANS",
          max_icans %in% c(1:2)               ~ "Grade 1 or 2",
          max_icans >= 3                      ~ "Grade 3+"),
-       icans_gradecat3 = factor(icans_gradecat3, levels = c("No CRS", "Grade 1 or 2", "Grade 3+")),
+       icans_gradecat3 = factor(icans_gradecat3, levels = c("No ICANS", "Grade 1 or 2", "Grade 3+")),
        gr3_ICANS = case_when(
          max_icans %in% c(1:2)               ~ "Grade <3",
          max_icans %in% c(3:5)               ~ "Grade ≥3"
@@ -389,30 +434,36 @@ cart2 <- cart1 %>%
     if_any(c(infection_number_1_severity,
              infection_number_2_severity,
              infection_number_3_severity), 
-           ~ . == "Severe")                            ~ "Yes",
+           ~ . == "Severe")                            ~ "Severe",
     if_any(c(infection_number_1_severity,
              infection_number_2_severity,
              infection_number_3_severity), 
-           ~ . == "Not Severe")                        ~ "No",
+           ~ . == "Not Severe")                        ~ "Not Severe",
     infection_number_1_yes_no == "No"                  ~ "No infection"
   ), severity_infection = relevel(factor(severity_infection), ref = "No infection")) %>% 
   
   # Neurotox
   mutate(any_delay_neurotox_yn = case_when(
+    other_delayed_non_parkinsonian_neurologic_toxicity_yes_no == "Yes" | 
+      cranial_nerve_palsy_yes_no == "Yes" |
+      parkinsonian_neurotoxicity_yes_no == "Yes"       ~ "Yes",
     is.na(parkinsonian_neurotoxicity_yes_no) & 
+      is.na(cranial_nerve_palsy_yes_no) & 
       is.na(other_delayed_non_parkinsonian_neurologic_toxicity_yes_no)                         
                                                        ~ NA_character_,
-    other_delayed_non_parkinsonian_neurologic_toxicity_yes_no == "Yes" | 
-      parkinsonian_neurotoxicity_yes_no == "Yes"       ~ "Yes",
-    TRUE                                               ~ "No"))
-    
-  # what_non_parkinsonian_neurotoxicity
-  # cranial_nerve_palsy_yes_no
-  # if_cnp_which_cranial_nerve_s
+    TRUE                                               ~ "No"
+  )) %>% 
+  mutate(type_delayed_neurotox = case_when(
+    parkinsonian_neurotoxicity_yes_no == "Yes"         ~ "Parkinson",
+    cranial_nerve_palsy_yes_no == "Yes" &
+      other_delayed_non_parkinsonian_neurologic_toxicity_yes_no == "Yes"   ~ "Other DNT",
+    cranial_nerve_palsy_yes_no == "Yes"                ~ "Other DNT",
+    other_delayed_non_parkinsonian_neurologic_toxicity_yes_no == "Yes"   ~ "Other DNT",
+    any_delay_neurotox_yn == "No"                      ~ "No"
+  ))
   
 ```
 	
-OSU_MM_61 has a "No" infection n1 but "Yes" for n2
 
 ```{r response}
 cart3 <- cart2 %>% 
@@ -476,7 +527,7 @@ cart3 <- cart2 %>%
     str_detect(response_d365_v2, "CR")	               ~ "sCR/CR",
     is.na(response_d365_v2)                            ~ NA_character_,
     TRUE                                               ~ "≤CR"
-  ))
+  )) %>% 
   # mutate(best_response = case_when(
   #   response_d30_v2 == "sCR/CR" | 
   #     response_d90_v2 == "sCR/CR" |
@@ -495,20 +546,19 @@ cart3 <- cart2 %>%
   #     response_d365_v2 == "PD"                         ~ "PD",
   #   TRUE                                               ~ NA_character_
   # )) %>% 
-  # mutate(best_ORR = case_when(
-  #   str_detect(best_response, "CR|PR")                 ~ "≥PR", 
-  #   str_detect(best_response, "SD|PD")                 ~ "PD/SD",
-  #   TRUE                                               ~ NA_character_
-  # )) %>% 
-  # mutate(best_CRorbetter = case_when(
-  #    CRorbetter_30days == "sCR/CR" | 
-  #      CRorbetter_90days == "sCR/CR" | 
-  #      CRorbetter_365days == "sCR/CR"                  ~ "sCR/CR",
-  #    is.na(CRorbetter_30days) & 
-  #      is.na(CRorbetter_90days) & 
-  #      is.na(CRorbetter_365days)                       ~ NA_character_, 
-  #    TRUE                                              ~ "< CR"
-  #  ))
+  mutate(best_ORR = case_when(
+    str_detect(best_response_s_cr_cr_vgpr_pr_sd_pd, 
+               "CR|PR")                                ~ "≥PR",
+    str_detect(best_response_s_cr_cr_vgpr_pr_sd_pd, 
+               "SD|PD")                                ~ "PD/SD",
+    TRUE                                               ~ NA_character_
+  )) %>%
+  mutate(best_CRorbetter = case_when(
+     best_response_s_cr_cr_vgpr_pr_sd_pd == 
+       "sCR/CR"                                        ~ "sCR/CR",
+     is.na(best_response_s_cr_cr_vgpr_pr_sd_pd)        ~ NA_character_,
+     TRUE                                              ~ "< CR"
+   ))
 
 ```
 
@@ -519,7 +569,7 @@ cart3 <- cart2 %>%
 # Labeling ----
 var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - Categories",
                          male_sex = "Male Sex", sex = "Sex",
-                         race_eth = "Race",
+                         race = "Race", race_eth = "Race and Ethnicity",
                          # raceeth = "Race and ethnicity",
                          infused = "Infused",
                          os_time_from_infusion_months = "Follow-up time from infusion (months)",
@@ -556,12 +606,8 @@ var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - C
                          # bm_bx_pre_bridging_60_percent_plasma_cells = "BMBx Pre Bridging ≥60% plasma cells",
                          # prior_transplant =	"Previous stem-cell transplantation",
                          # scope_mm = "SCOPE-MM",
-                         bridging_therapy_yes_no = "Bridging Therapy",
-                         bridging_response_v2 = "Bridging Response, limited to bridging patients",
-                         bridging_response_v3 = "Bridging Response",
-                         bridging_response_cat = "Bridging Response, Detailed",
-                         bridging_response_cat_v2 = "Bridging Response, Detailed",
                          response_to_bridging_chemotherapy = "Response to bridging Therapy",
+                         bridging_response_cat = "Bridging Response",
                          # bridging_type = "Bridging therapy used",
                          # prior_auto_sct_y_n = "Prior autoSCT",
                          # prior_allo_sct_y_n = "Prior alloSCT",
@@ -622,8 +668,10 @@ var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - C
                          # nint_type = "NINT type",
                          any_delay_neurotox_yn = "Any delayed neurotoxicity (Yes/No)",
                          parkinsonian_neurotoxicity_yes_no = "Parkinsonian Neurotoxicity",
+                         cranial_nerve_palsy_yes_no = "Cranial nerve palsy Neurotoxicity",
                          other_delayed_non_parkinsonian_neurologic_toxicity_yes_no =
                            "Other/Delayed Non-Parkinsonian Neurologic Toxicity",
+                         type_delayed_neurotox = "Type of delayed neurotoxicity",
                          # # parkinsonian_neurotoxicity_duration_days = "Parkinsonian NT duration (days)",
                          # # updated_dnt_parkinsonresolved_yn = "Parkinsonian NT resolved",
                          # # day_of_onset_parkinsonian_relative_to_infusion = "Day of onset of Parkinsonian NT relative to infusion",
@@ -653,8 +701,8 @@ var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - C
                          ORR_365days = "Month 12 ORR", CRorbetter_365days = "Month 12 CR or better",
 
                          best_response_s_cr_cr_vgpr_pr_sd_pd = "Best overall response",
-                         # best_ORR = "Best ORR",
-                         # best_CRorbetter = "Best CR or better",
+                         best_ORR = "Best ORR",
+                         best_CRorbetter = "Best CR or better",
                          did_patient_meet_eligibility_criteria_for_cartitude_1_on_the_day_of_apheresis_yes_no = 
                            "Did patient meet cartitude criteria"
 )
@@ -667,23 +715,50 @@ var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - C
 ```{r}
 cart3 %>%
   select(infused) %>% 
-  tbl_summary()
+  tbl_summary(type = list(c(all_dichotomous()) ~ "categorical"))
 
 cart3 <- cart3 %>% 
   filter(infused == "Yes")
 
 cart3 %>%
   select(t_11_14_prior_to_car_t_infusion_yes_no) %>% 
-  tbl_summary(type = list(c(all_dichotomous()) ~ "categorical"),)
+  tbl_summary(type = list(c(all_dichotomous()) ~ "categorical"))
+
+cart3 <- cart3 %>% 
+  filter(!is.na(t_11_14_prior_to_car_t_infusion_yes_no))
+
+variable_of_interest <- "t_11_14_alone"
+
+cart3 %>%
+  select(all_of(variable_of_interest)) %>% 
+  tbl_summary(type = list(c(all_dichotomous()) ~ "categorical"))
 ```
-The analysis is restricted to infused patients only herafter.
+24 cases could not be categorized as they were missing information on the other cytogenetic abnormalities to delineate whether a patient had t(11;14) alone or with others.
+
+```{r}
+# cart3 %>%
+#   select(t_11_14_alone,
+#          deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no,
+#          deletion_of_1p32_yes_no, 
+#          gain_amp1q21_gain_amp_no, 
+#          t_4_14_prior_to_car_t_infusion_yes_no, 
+#          t_14_16_prior_to_car_t_infusion_yes_no) %>% 
+#   mutate(t_11_14_alone = fct_na_value_to_level(t_11_14_alone, level = "missing")) %>% 
+#   tbl_summary(by = t_11_14_alone,
+#               type = list(c(all_dichotomous()) ~ "categorical"))
+
+cart3 <- cart3 %>% 
+  filter(!is.na(.data[[variable_of_interest]]))
+```
+The analysis is restricted to infused patients with information for the t(11;14) category explored (here `r variable_of_interest`).
 
 ## Table 1. Patient baseline characteristics
 ```{r Table 1}
 cart3 %>%
   select(age_at_car_t, agecat,
          os_time_from_infusion_months,
-         male_sex, race, ethnicity, race_eth,
+         male_sex, race, #race_all, 
+         ethnicity, race_eth,
          ecog_at_apheresis, ecog_at_ld,
          r_iss_at_car_t_infusion, #subtype,
          # bsln_bmpc, bmpc_cat, bsln_burden_ge50pct,
@@ -700,24 +775,25 @@ cart3 %>%
          t_4_14_prior_to_car_t_infusion_yes_no, 
          t_14_16_prior_to_car_t_infusion_yes_no,
          t_11_14_prior_to_car_t_infusion_yes_no,
-         
+         variable_of_interest,
          cell_dose_million_cells,
          prior_bcma_exposure_exposed_vs_refractory_vs_not_exposed,
          prior_bcma_y_n,
          bridging_therapy_yes_no,
          response_to_bridging_chemotherapy,
-         bridging_response_v2, bridging_response_v3, bridging_response_cat, bridging_response_cat_v2,
+         bridging_response_cat,
          doubleref, tripleref, pentaref, 
-         number_prior_lines_therapy,
+         number_of_prior_lines_of_therapy, number_prior_lines_therapy,
          did_patient_meet_eligibility_criteria_for_cartitude_1_on_the_day_of_apheresis_yes_no) %>%
-  tbl_summary(by = t_11_14_prior_to_car_t_infusion_yes_no,
+  tbl_summary(by = variable_of_interest,
+              statistic = list(all_continuous() ~ "{median} ({min}, {max})"),
               type = list(c(all_dichotomous(), -male_sex) ~ "categorical"),
               digits = all_continuous() ~ 1
   ) %>%
   bold_labels() %>%
   add_p() %>% bold_p() %>% add_overall() %>%
   add_stat_label() %>%
-  modify_spanning_header(c(stat_1, stat_2) ~ "**t(11;14) - IQR**")
+  modify_spanning_header(c(stat_1, stat_2) ~ "**t(11;14)**")
 
 
 ```
@@ -737,9 +813,12 @@ cart3 %>%
          
          any_delay_neurotox_yn,
          parkinsonian_neurotoxicity_yes_no,
+         cranial_nerve_palsy_yes_no,
          other_delayed_non_parkinsonian_neurologic_toxicity_yes_no,
-         t_11_14_prior_to_car_t_infusion_yes_no) %>%
-  tbl_summary(by = t_11_14_prior_to_car_t_infusion_yes_no,
+         type_delayed_neurotox,
+         variable_of_interest) %>%
+  tbl_summary(by = variable_of_interest,
+              statistic = list(all_continuous() ~ "{median} ({min}, {max})"),
               type = list(c(all_dichotomous()) ~ "categorical"),
               digits = all_continuous() ~ 1
               # missing = "no"
@@ -747,7 +826,7 @@ cart3 %>%
   bold_labels() %>%
   add_p() %>% bold_p() %>% add_overall() %>%
   add_stat_label() %>%
-  modify_spanning_header(c(stat_1, stat_2) ~ "**t(11;14) - IQR**")
+  modify_spanning_header(c(stat_1, stat_2) ~ "**t(11;14)**")
 ```
 <br>
 
@@ -767,21 +846,21 @@ cart3 %>%
          ORR_365days, CRorbetter_365days,
          
          best_response_s_cr_cr_vgpr_pr_sd_pd,
-         # best_ORR, best_CRorbetter,
+         best_ORR, best_CRorbetter,
 
-         t_11_14_prior_to_car_t_infusion_yes_no) %>%
-  tbl_summary(by = t_11_14_prior_to_car_t_infusion_yes_no,
+         variable_of_interest) %>%
+  tbl_summary(by = variable_of_interest,
               type = list(
                 c(all_dichotomous())
                 ~ "categorical"),
-              statistic = list(all_continuous() ~ "{median} ({min}, {max})"),
+             statistic = list(all_continuous() ~ "{median} ({min}, {max})"),
               digits = all_continuous() ~ 1#,
               # missing = "no"
   ) %>%
   bold_labels() %>%
   add_p() %>% bold_p() %>% add_overall() %>%
   add_stat_label() %>%
-  modify_spanning_header(c(stat_1, stat_2) ~ "**t(11;14) - IQR**")
+  modify_spanning_header(c(stat_1, stat_2) ~ "**t(11;14)**")
 ```
 
 ```{r}
@@ -801,6 +880,7 @@ cart3 %>%
 
 # Survival
 ```{r}
+print("2 patients excluded because no death date available")
 cart3 <- cart3 %>% 
   filter(os_event_from_infusion == 1 |
            (os_event_from_infusion == 0 &
@@ -827,7 +907,7 @@ ggsurvplot(survfit(Surv(os_time_from_infusion_months, os_event_from_infusion) ~ 
            censor = TRUE
 ) %++% guides(colour = guide_legend(ncol = 1))
 
-ggsurvplot(survfit(Surv(os_time_from_infusion_months, os_event_from_infusion) ~ t_11_14_prior_to_car_t_infusion_yes_no,
+ggsurvplot(survfit(Surv(os_time_from_infusion_months, os_event_from_infusion) ~ t_11_14_alone,
                    data=cart3),
            font.main = c(20, "bold", "black"),
            font.x = c(18, "bold", "black"),
@@ -856,7 +936,7 @@ survfit(Surv(time = cart3$os_time_from_infusion_months,
     label_header = "**Median survival (95% CI)**"
   ) %>% add_nevent() %>% add_n()
 survfit(Surv(time = cart3$os_time_from_infusion_months,
-                   event = cart3$os_event_from_infusion) ~ t_11_14_prior_to_car_t_infusion_yes_no,
+                   event = cart3$os_event_from_infusion) ~ t_11_14_alone,
               data = cart3) %>%
   tbl_survfit(
     probs = 0.5,
@@ -868,7 +948,7 @@ list(
                event = cart3$os_event_from_infusion) ~ 1,
           data = cart3),
   survfit(Surv(time = cart3$os_time_from_infusion_months,
-               event = cart3$os_event_from_infusion) ~ t_11_14_prior_to_car_t_infusion_yes_no,
+               event = cart3$os_event_from_infusion) ~ t_11_14_alone,
           data = cart3)
 ) %>%
   tbl_survfit(times = c(6, 12),
@@ -896,7 +976,7 @@ ggsurvplot(survfit(Surv(pfs_time_from_infusion_months, pfs_event_from_infusion) 
            censor = TRUE
 ) %++% guides(colour = guide_legend(ncol = 1))
 
-ggsurvplot(survfit(Surv(pfs_time_from_infusion_months, pfs_event_from_infusion) ~ t_11_14_prior_to_car_t_infusion_yes_no,
+ggsurvplot(survfit(Surv(pfs_time_from_infusion_months, pfs_event_from_infusion) ~ t_11_14_alone,
                    data=cart3),
            font.main = c(20, "bold", "black"),
            font.x = c(18, "bold", "black"),
@@ -925,7 +1005,7 @@ survfit(Surv(time = cart3$pfs_time_from_infusion_months,
     label_header = "**Median PFS (95% CI)**"
   ) %>% add_nevent() %>% add_n()
 survfit(Surv(time = cart3$pfs_time_from_infusion_months,
-                   event = cart3$pfs_event_from_infusion) ~ t_11_14_prior_to_car_t_infusion_yes_no,
+                   event = cart3$pfs_event_from_infusion) ~ t_11_14_alone,
               data = cart3) %>%
   tbl_survfit(
     probs = 0.5,
@@ -937,7 +1017,7 @@ list(
                event = cart3$pfs_event_from_infusion) ~ 1,
           data = cart3),
   survfit(Surv(time = cart3$pfs_time_from_infusion_months,
-               event = cart3$pfs_event_from_infusion) ~ t_11_14_prior_to_car_t_infusion_yes_no,
+               event = cart3$pfs_event_from_infusion) ~ t_11_14_alone,
           data = cart3)
 ) %>%
   tbl_survfit(times = c(6, 12),
@@ -951,7 +1031,7 @@ nrm_curves <- cart3 %>%
   filter(os_event_from_infusion == 1 |
            (os_event_from_infusion == 0 &
               is.na(cause_of_death_classification_myeloma_progression_toxicity_of_car_t_toxicity_of_subsequent_therapy_other))) %>% 
-  rename(`t(11:14) at Infusion` = t_11_14_prior_to_car_t_infusion_yes_no) %>%   
+  rename(`t(11:14) at Infusion` = t_11_14_alone) %>%   
   
   mutate(nrm_response = case_when(
     os_event_from_infusion == 0                        ~ 0,
@@ -983,6 +1063,12 @@ nrm_curves <- cart3 %>%
   )) %>% 
   mutate(nrm_response = as.factor(nrm_response))
 
+
+table(nrm_curves$nrm_response2, useNA = "always")
+print("791 missing values in did_patient_have_nrm_event_attributed_to_car_t_yes_no")
+table(nrm_curves$nrm_response, useNA = "always")
+print("0 missing values in the NRM variable I coded, 113 event")
+print("14 have missing os_time")
 
 library(tidycmprsk)
 library(ggsurvfit)
@@ -1027,7 +1113,7 @@ nrm_curves <- cart3 %>%
   filter(os_event_from_infusion == 1 |
            (os_event_from_infusion == 0 &
               is.na(cause_of_death_classification_myeloma_progression_toxicity_of_car_t_toxicity_of_subsequent_therapy_other))) %>% 
-  rename(t_11_14 = t_11_14_prior_to_car_t_infusion_yes_no) %>%
+  rename(t_11_14 = t_11_14_alone) %>%
   
   mutate(nrm_response = case_when(
     os_event_from_infusion == 0                        ~ 0,
@@ -1040,7 +1126,9 @@ nrm_curves <- cart3 %>%
     
     
     os_event_from_infusion == 1                        ~ 1
-  ))
+  )) #%>% 
+  # select(pt_identifier_do_not_use_phi, os_event_from_infusion, os_time_from_infusion_months, nrm_response,
+  #        date_of_last_contact_last_update)
 
 ggsurvplot(survfit(Surv(os_time_from_infusion_months, nrm_response) ~ t_11_14,
                    data=nrm_curves),
