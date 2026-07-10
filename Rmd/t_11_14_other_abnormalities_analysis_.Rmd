@@ -17,6 +17,24 @@ editor_options:
   chunk_output_type: console
 ---
 
+```{=html}
+<style type= "text/css">
+
+. figure {
+   margin-top: 25px;
+   margin-bottom: 100px;
+}
+
+table {
+    margin-top: 10px;
+    margin-bottom: 25px;
+}
+</style>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE,
                       warning = FALSE,
@@ -239,6 +257,18 @@ cart <- clinical %>%
   ))
 
 ```
+
+```{r basline}
+cart <- cart %>%
+  mutate(baseline_ferritin_cat = case_when(
+    baseline_pre_ld_ferritin >= 400                                ~ "≥ ULN at LD (≥ 400)",
+    baseline_pre_ld_ferritin < 400                                 ~ "Normal (< 400)"
+  ), baseline_ferritin_cat = 
+    factor(baseline_ferritin_cat, levels = c("Normal (< 400)",
+                                             "≥ ULN at LD (≥ 400)")))
+```
+
+
 
 ```{r treatment}
 cart1 <- cart %>%
@@ -585,7 +615,8 @@ var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - C
                          # time_since_diagnosis_to_d0_years = "Time since diagnosis at D0 (years)",
                          true_extramedullary_disease_prior_to_infusion_yes_no = "Extramedullary disease",
                          bm_plasma_cell_percent_at_pre_ld = "BM Plasma Cell % at pre-LD",
-                         # updated_bximag_imaging_emd_yn_preinf = "Extramedullary disease",
+                         baseline_ferritin_cat = "Baseline Ferritin, group",
+                        # updated_bximag_imaging_emd_yn_preinf = "Extramedullary disease",
                          # circulating_plasma_cell = "UPDATED Circulating Plasma Cells",
                          high_marrow_burden_50_percent = "High marrow burden (≥50%)",
                          baseline_pre_ld_ferritin = "Baseline ferritin at pre-LD",
@@ -599,7 +630,7 @@ var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - C
                          deletion_17p_or_tp53_prior_to_car_t_infusion_yes_no = "Deletion 17p or TP53 at Infusion",
                          deletion_of_1p32_yes_no = "Deletion 1p32",
                          t_4_14_prior_to_car_t_infusion_yes_no = "t(4:14) at Infusion",
-                         t_14_16_prior_to_car_t_infusion_yes_no = "t(4:16) at Infusion",
+                         t_14_16_prior_to_car_t_infusion_yes_no = "t(14:16) at Infusion",
                          gain_amp1q21_gain_amp_no = "Gain/amp 1q21",
                          number_of_prior_lines_of_therapy = "Number of prior therapy",
                          number_prior_lines_therapy = "Number of prior lines of therapy (cat)",
@@ -703,6 +734,7 @@ var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - C
                          best_response_s_cr_cr_vgpr_pr_sd_pd = "Best overall response",
                          best_ORR = "Best ORR",
                          best_CRorbetter = "Best CR or better",
+                        did_ever_patient_achieve_mrd_negativity_post_car_t_yes_no = "Ever MRD negativity",
                          did_patient_meet_eligibility_criteria_for_cartitude_1_on_the_day_of_apheresis_yes_no = 
                            "Did patient meet cartitude criteria"
 )
@@ -712,6 +744,7 @@ var_label(cart3) <- list(age_at_car_t = "Patient age", agecat = "Patient age - C
 
 
 # Tables
+## Inclusion
 ```{r}
 cart3 %>%
   select(infused) %>% 
@@ -791,7 +824,8 @@ cart3 %>%
               digits = all_continuous() ~ 1
   ) %>%
   bold_labels() %>%
-  add_p() %>% bold_p() %>% add_overall() %>%
+  add_p(test.args = c(prior_bcma_exposure_exposed_vs_refractory_vs_not_exposed) ~ list(workspace=2e9)) %>% 
+  bold_p() %>% add_overall() %>%
   add_stat_label() %>%
   modify_spanning_header(c(stat_1, stat_2, stat_3) ~ "**t(11;14) alone/other abnormalities**")
 
@@ -801,16 +835,16 @@ cart3 %>%
 
 ## Table 2. Safety
 ### CRS/ICANS
-```{r}
+```{r safety table}
 # breaka #for IQR??
 cart3 %>%
-  select(crs_any, max_crs_grade_0_5, 
+  select(crs_any, max_crs_grade_0_5,
          crs_gradecat2, crs_gradecat3,
-         icans_any, max_icans, 
+         icans_any, max_icans,
          icans_gradecat2, icans_gradecat3,
          iec_hs_yes_no, iec_colitis_yes_no,
          any_infection, any_sevinfection, severity_infection,
-         
+
          any_delay_neurotox_yn,
          parkinsonian_neurotoxicity_yes_no,
          cranial_nerve_palsy_yes_no,
@@ -824,7 +858,11 @@ cart3 %>%
               # missing = "no"
   ) %>%
   bold_labels() %>%
-  add_p() %>% bold_p() %>% add_overall() %>%
+  add_p(test.args = c(max_crs_grade_0_5, crs_gradecat3,
+                      max_icans, icans_gradecat3,
+                      type_delayed_neurotox) ~ list(workspace=2e9)
+        ) %>%
+  bold_p() %>% add_overall() %>%
   add_stat_label() %>%
   modify_spanning_header(c(stat_1, stat_2, stat_3) ~ "**t(11;14) alone/other abnormalities**")
 ```
@@ -844,7 +882,7 @@ cart3 %>%
          # x12_month_response_s_cr_cr_vgpr_pr_sd_pd,
          response_d365_v2,
          ORR_365days, CRorbetter_365days,
-         
+
          best_response_s_cr_cr_vgpr_pr_sd_pd,
          best_ORR, best_CRorbetter,
 
@@ -858,9 +896,39 @@ cart3 %>%
               # missing = "no"
   ) %>%
   bold_labels() %>%
-  add_p() %>% bold_p() %>% add_overall() %>%
+  add_p(test.args = list(
+      # c(response_d30_v2, response_d90_v2,
+      #                 response_d365_v2) ~ list(simulate.p.value = TRUE, B = 10000),
+      c(best_response_s_cr_cr_vgpr_pr_sd_pd) ~ list(workspace = 2e9)
+    )) %>%
+  bold_p() %>% add_overall() %>%
   add_stat_label() %>%
   modify_spanning_header(c(stat_1, stat_2, stat_3) ~ "**t(11;14) alone/other abnormalities**")
+
+# fisher.test(cart3$response_d30_v2, cart3$t_11_14_and_other, workspace=2e9, control='mult')
+# fisher.test(cart3$response_d90_v2, cart3$t_11_14_and_other)
+# fisher.test(cart3$response_d365_v2, cart3$t_11_14_and_other)
+# fisher.test(cart3$best_response_s_cr_cr_vgpr_pr_sd_pd, cart3$t_11_14_and_other, simulate.p.value = TRUE, B = 1000000)
+
+cart3 %>%
+  filter(best_CRorbetter == "sCR/CR") %>%
+  select(did_ever_patient_achieve_mrd_negativity_post_car_t_yes_no,
+         variable_of_interest) %>%
+  tbl_summary(by = variable_of_interest,
+              type = list(
+                c(all_dichotomous())
+                ~ "categorical"),
+             statistic = list(all_continuous() ~ "{median} ({min}, {max})"),
+              digits = all_continuous() ~ 1#,
+              # missing = "no"
+  ) %>%
+  bold_labels() %>%
+  add_p() %>% bold_p() %>% add_overall() %>%
+  add_stat_label() %>%
+  modify_spanning_header(c(stat_1, stat_2, stat_3) ~ "**t(11;14) alone/other abnormalities**") %>%
+  modify_header(label ~ "**In sCR/CR best response**",
+                all_stat_cols() ~ "**{level}**, N = {n}")
+
 ```
 
 ```{r}
@@ -892,38 +960,53 @@ cart3 <- cart3 %>%
 ggsurvplot(survfit(Surv(os_time_from_infusion_months, os_event_from_infusion) ~ 1,
                    data=cart3),
            font.main = c(20, "bold", "black"),
-           font.x = c(18, "bold", "black"),
-           font.y = c(18, "bold", "black"),
-           font.legend = c(16, "black"),
-           font.tickslab = c(16, "bold", "black"),
+           font.x = c(12, "plain", "black"),
+           font.y = c(12, "plain", "black"),
+           font.legend = c(10, "plain", "black"),
+           font.tickslab = c(10, "plain", "black"),
            size = 1.5,
 
            xlab = "Time (months)",
            ylab = "OS (probability)",
-           legend = "top",
-           pval = TRUE,
+           legend = "top", legend.title = "",
+           pval = TRUE, pval.size = 4,
            conf.int = FALSE,
-           # Censor
+           risk.table = TRUE,
+           risk.table.fontsize = 3,
+          # Censor
            censor = TRUE
 ) %++% guides(colour = guide_legend(ncol = 1))
+```
 
+
+```{r KM OS t1114, fig.height=6}
 ggsurvplot(survfit(Surv(os_time_from_infusion_months, os_event_from_infusion) ~ t_11_14_and_other,
                    data=cart3),
            font.main = c(20, "bold", "black"),
-           font.x = c(18, "bold", "black"),
-           font.y = c(18, "bold", "black"),
-           font.legend = c(16, "black"),
-           font.tickslab = c(16, "bold", "black"),
+           font.x = c(12, "plain", "black"),
+           font.y = c(12, "plain", "black"),
+           font.legend = c(10, "plain", "black"),
+           font.tickslab = c(10, "plain", "black"),
            size = 1.5,
 
            xlab = "Time (months)",
            ylab = "OS (probability)",
-           legend = "top",
-           pval = TRUE,
+           legend = "top", legend.title = "", 
+           legend.labs = c("No", "t(11;14) alone", "t(11;14) and other risk(s)"),
+           pval = TRUE, pval.size = 4, 
            conf.int = FALSE,
+           risk.table = TRUE,
+           risk.table.fontsize = 4,
+           tables.y.text = FALSE,
+           tables.theme = theme_classic()+
+             theme(text = element_text(size = 10),
+                   # plot.title = element_text(size = 10),  # Table title ("Number at risk")
+                   axis.text.x = element_text(size = 10),                # Time ticks (x-axis)
+                   axis.title.x = element_text(size = 12)                # X-axis label ("Time")
+             ),
            # Censor
            censor = TRUE
-) %++% guides(colour = guide_legend(ncol = 1))
+) %++% guides(colour = guide_legend(ncol = 3))
 ```
 
 Median OS in months
@@ -977,38 +1060,53 @@ list(
 ggsurvplot(survfit(Surv(pfs_time_from_infusion_months, pfs_event_from_infusion) ~ 1,
                    data=cart3),
            font.main = c(20, "bold", "black"),
-           font.x = c(18, "bold", "black"),
-           font.y = c(18, "bold", "black"),
-           font.legend = c(16, "black"),
-           font.tickslab = c(16, "bold", "black"),
+           font.x = c(12, "plain", "black"),
+           font.y = c(12, "plain", "black"),
+           font.legend = c(10, "plain", "black"),
+           font.tickslab = c(10, "plain", "black"),
            size = 1.5,
 
            xlab = "Time (months)",
            ylab = "PFS (probability)",
-           legend = "top",
-           pval = TRUE,
+           legend = "top", legend.title = "",
+           pval = TRUE, pval.size = 4,
            conf.int = FALSE,
+           risk.table = TRUE,
+           risk.table.fontsize = 3,
            # Censor
            censor = TRUE
 ) %++% guides(colour = guide_legend(ncol = 1))
+```
 
+
+```{r KM PFS t1114, fig.height=6}
 ggsurvplot(survfit(Surv(pfs_time_from_infusion_months, pfs_event_from_infusion) ~ t_11_14_and_other,
                    data=cart3),
            font.main = c(20, "bold", "black"),
-           font.x = c(18, "bold", "black"),
-           font.y = c(18, "bold", "black"),
-           font.legend = c(16, "black"),
-           font.tickslab = c(16, "bold", "black"),
+           font.x = c(12, "plain", "black"),
+           font.y = c(12, "plain", "black"),
+           font.legend = c(10, "plain", "black"),
+           font.tickslab = c(10, "plain", "black"),
            size = 1.5,
 
            xlab = "Time (months)",
            ylab = "PFS (probability)",
-           legend = "top",
-           pval = TRUE,
+           legend = "top", legend.title = "",
+           legend.labs = c("No", "t(11;14) alone", "t(11;14) and other risk(s)"),
+           pval = TRUE, pval.size = 4,
            conf.int = FALSE,
+           risk.table = TRUE,
+           risk.table.fontsize = 3,
+           tables.y.text = FALSE,
+           tables.theme = theme_classic()+
+             theme(text = element_text(size = 10),
+                   # plot.title = element_text(size = 10),  # Table title ("Number at risk")
+                   axis.text.x = element_text(size = 10),                # Time ticks (x-axis)
+                   axis.title.x = element_text(size = 12)                # X-axis label ("Time")
+             ),
            # Censor
            censor = TRUE
-) %++% guides(colour = guide_legend(ncol = 1))
+) %++% guides(colour = guide_legend(ncol = 3))
 ```
 
 Median PFS in months
@@ -1141,6 +1239,10 @@ library(ggsurvfit)
 #        width = 8,
 #        units = "in",
 #        dpi = 600, compression = "lzw")
+```
+
+same curve but with risk table
+```{r, fig.height=6}
 nrm_curves <- cart3 %>% 
   filter(os_event_from_infusion == 1 |
            (os_event_from_infusion == 0 &
@@ -1166,23 +1268,89 @@ ggsurvplot(survfit(Surv(os_time_from_infusion_months, nrm_response) ~ t_11_14,
                    data=nrm_curves),
            fun = "event",
            font.main = c(20, "bold", "black"),
-           font.x = c(18, "bold", "black"),
-           font.y = c(18, "bold", "black"),
-           font.legend = c(16, "black"),
-           font.tickslab = c(16, "bold", "black"),
+           font.x = c(12, "plain", "black"),
+           font.y = c(12, "plain", "black"),
+           font.legend = c(10, "plain", "black"),
+           font.tickslab = c(10, "plain", "black"),
            size = 1.5,
            surv.median.line = "hv",
 
            xlab = "Time (months)",
            ylab = "Cumulative Incidence of NRM",
-           legend = "top",
-           pval = TRUE,
+           legend = "top", legend.title = "",
+           legend.labs = c("No", "t(11;14) alone", "t(11;14) and other risk(s)"),
+           pval = TRUE, pval.size = 4,
            conf.int = FALSE,
            risk.table = TRUE,
+           risk.table.fontsize = 3,
+           tables.y.text = FALSE,
+           tables.theme = theme_classic()+
+             theme(text = element_text(size = 10),
+                   # plot.title = element_text(size = 10),  # Table title ("Number at risk")
+                   axis.text.x = element_text(size = 10),                # Time ticks (x-axis)
+                   axis.title.x = element_text(size = 12)                # X-axis label ("Time")
+             ),
            # Censor
            censor = TRUE
-) %++% guides(colour = guide_legend(ncol = 1))
+) %++% guides(colour = guide_legend(ncol = 3))
 ```
+
+
+# MVA
+## OS
+MVA without high marrow burden
+```{r}
+coxph(Surv(time = cart3$os_time_from_infusion_months,
+             event = cart3$os_event_from_infusion) ~ t_11_14_and_other + pentaref +
+          prior_bcma_y_n + bridging_response_cat + 
+        true_extramedullary_disease_prior_to_infusion_yes_no + 
+        baseline_ferritin_cat,
+        data = cart3)  %>%
+  tbl_regression(exponentiate = TRUE) %>%
+  bold_p(t = .05) %>%
+  add_nevent(location = "level") %>% add_n(location = "level")
+```
+
+This MVA is identical to the previous model, with the addition of high marrow burden. Incorporating this variable in the model reduced the sample size due to missing data.
+```{r}
+coxph(Surv(time = cart3$os_time_from_infusion_months,
+             event = cart3$os_event_from_infusion) ~ t_11_14_and_other + pentaref +
+          prior_bcma_y_n + bridging_response_cat + 
+        true_extramedullary_disease_prior_to_infusion_yes_no + 
+        baseline_ferritin_cat + high_marrow_burden_50_percent,
+        data = cart3)  %>%
+  tbl_regression(exponentiate = TRUE) %>%
+  bold_p(t = .05) %>%
+  add_nevent(location = "level") %>% add_n(location = "level")
+```
+
+## PFS
+MVA without high marrow burden
+```{r}
+coxph(Surv(time = cart3$pfs_time_from_infusion_months,
+             event = cart3$pfs_event_from_infusion) ~ t_11_14_and_other + pentaref +
+          prior_bcma_y_n + bridging_response_cat + 
+        true_extramedullary_disease_prior_to_infusion_yes_no + 
+        baseline_ferritin_cat,
+        data = cart3)  %>%
+  tbl_regression(exponentiate = TRUE) %>%
+  bold_p(t = .05) %>%
+  add_nevent(location = "level") %>% add_n(location = "level")
+```
+
+This MVA is identical to the previous model, with the addition of high marrow burden. Incorporating this variable in the model reduced the sample size due to missing data.
+```{r}
+coxph(Surv(time = cart3$pfs_time_from_infusion_months,
+             event = cart3$pfs_event_from_infusion) ~ t_11_14_and_other + pentaref +
+          prior_bcma_y_n + bridging_response_cat + 
+        true_extramedullary_disease_prior_to_infusion_yes_no + 
+        baseline_ferritin_cat + high_marrow_burden_50_percent,
+        data = cart3)  %>%
+  tbl_regression(exponentiate = TRUE) %>%
+  bold_p(t = .05) %>%
+  add_nevent(location = "level") %>% add_n(location = "level")
+```
+
 
 
 
